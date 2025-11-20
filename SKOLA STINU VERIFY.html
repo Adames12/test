@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+<title>Škola Stínů — Ověření</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold: #d4af37;
+    --bg-1: #040406;
+    --bg-2: #000000;
+    --muted: #cfcfcf;
+    --danger: #ff5a5a;
+  }
+  html,body{height:100%;margin:0;padding:0;background:linear-gradient(180deg,var(--bg-1),var(--bg-2));font-family:'Cinzel',serif;color:#eee;overflow:hidden;}
+  body{display:flex;flex-direction:column;align-items:center;}
+
+/* header */
+  header{z-index:6;position:relative;padding:36px 18px 8px;text-align:center;pointer-events:none;}
+  h1{margin:0;font-size:3rem;color:var(--gold);text-shadow:0 0 30px rgba(212,175,55,0.7);letter-spacing:2px;}
+  .subtitle{color:var(--muted);margin-top:6px;font-size:1rem;pointer-events:none}
+
+/* layout */
+  main{z-index:6;position:relative;display:flex;gap:34px;align-items:flex-start;width:100%;max-width:1100px;padding:18px;box-sizing:border-box;justify-content:center}
+
+/* panel (left) */
+  .panel{width:360px;background:rgba(10,10,10,0.5);border-radius:14px;padding:22px;border:1px solid rgba(212,175,55,0.12);box-shadow:0 12px 40px rgba(0,0,0,0.6);backdrop-filter: blur(6px);transform-origin:center;transition:transform .18s ease}
+
+/* display */
+  #display{height:56px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.04));border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:1.6rem;letter-spacing:3px;margin-bottom:14px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.6)}
+
+/* numpad */
+  .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .btn{padding:14px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.05));color:#fff;border:1px solid rgba(255,255,255,0.06);font-size:1.25rem;cursor:pointer;font-weight:700;box-shadow:0 6px 14px rgba(0,0,0,0.5) inset;transition:transform .08s ease,box-shadow .12s ease,background .12s ease}
+  .btn:hover{background:linear-gradient(180deg, rgba(212,175,55,0.12), rgba(0,0,0,0.06));box-shadow:0 12px 28px rgba(212,175,55,0.08)}
+  .btn:active{transform:translateY(1px)}
+  .btn--enter{grid-column:span 3;background:var(--gold);color:#111;border:none;font-size:1.05rem}
+  .btn--enter:hover{background:#ffd76a}
+
+/* clear button redish */
+  .btn--clear{background: rgba(255,80,80,0.06);border:1px solid rgba(255,80,80,0.12);color:#ffb3b3}
+
+/* error */
+  #err{height:30px;margin-top:10px;color:var(--danger);font-weight:700;text-align:center;opacity:0;transition:opacity .2s}
+
+/* right info */
+  .info{width:420px;color:var(--muted);text-align:left;padding:22px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+  .info h2{color:var(--gold);margin:0 0 10px 0}
+  .info p{margin:0 0 10px 0;line-height:1.45;font-size:0.98rem}
+  .stat{display:flex;align-items:center;gap:14px;margin-top:12px}
+  .badge{width:48px;height:48px;border-radius:10px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.04);font-weight:700;color:var(--gold)}
+  .hint{font-size:.95rem;color:#cfcfcf;margin-top:12px}
+
+/* footer */
+  footer{position:relative;z-index:6;margin:28px 0 40px;color:#6e6e6e;font-size:.9rem}
+
+/* canvas fx covers whole viewport and is behind everything */
+  canvas#fxCanvas{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:1;pointer-events:none}
+
+/* runic circle svg overlay (on top of canvas, under UI) */
+  .runic-svg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:680px;height:680px;z-index:2;opacity:0.45;pointer-events:none;mix-blend-mode:screen}
+
+/* responsive */
+  @media (max-width:980px){main{flex-direction:column;gap:18px;padding-bottom:36px}.info{width:90%}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ŠKOLA STÍTNŮ</h1>
+  <div class="subtitle">Vstup pouze pro zasvěcence — zadej svůj kód</div>
+</header>
+
+<main>
+  <!-- left: panel -->
+  <section class="panel" id="panel">
+    <div id="display" aria-live="polite">---------</div>
+
+    <div class="numpad" role="group" aria-label="číselník">
+      <button class="btn" data-key="1">1</button>
+      <button class="btn" data-key="2">2</button>
+      <button class="btn" data-key="3">3</button>
+      <button class="btn" data-key="4">4</button>
+      <button class="btn" data-key="5">5</button>
+      <button class="btn" data-key="6">6</button>
+      <button class="btn" data-key="7">7</button>
+      <button class="btn" data-key="8">8</button>
+      <button class="btn" data-key="9">9</button>
+      <button class="btn" data-key="0">0</button>
+      <button class="btn btn--clear" id="clearBtn">C</button>
+      <button class="btn btn--enter" id="enterBtn">POTVRDIT</button>
+    </div>
+
+    <div id="err" role="status" aria-live="assertive"></div>
+  </section>
+
+  <!-- right: info -->
+  <aside class="info">
+    <h2>Vítej, zasvěcenče</h2>
+    <p>Drak střeží bránu. Tato brána je starodávný portál — vstupuje se pouze s platným kódem. Buď opatrný, některé cesty jsou jednosměrné.</p>
+
+    <div class="stat">
+      <div class="badge">⚜</div>
+      <div>
+        <div style="font-weight:700;color:#fff">Identifikace</div>
+        <div style="font-size:.92rem;color:#cfcfcf">Zadej kód. Po úspěchu budeš přesměrován ke registraci další části hry.</div>
+      </div>
+    </div>
+
+    <div class="stat">
+      <div class="badge">✦</div>
+      <div>
+        <div style="font-weight:700;color:#fff">Pravidla</div>
+        <div style="font-size:.92rem;color:#cfcfcf">Neprozrazuj kódy. Hra oceňuje trpělivost a ostří pohledy.</div>
+      </div>
+    </div>
+
+    <div class="hint">Tip: můžeš psát také z klávesnice (0–9). Backspace smaže vše, Enter potvrdí.</div>
+  </aside>
+</main>
+
+<!-- runic SVG ring (rotates) -->
+<svg class="runic-svg" viewBox="0 0 680 680" aria-hidden="true">
+  <defs>
+    <radialGradient id="rg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(255,220,110,0.85)"/>
+      <stop offset="40%" stop-color="rgba(255,180,60,0.07)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g id="runes" filter="url(#glow)">
+    <circle cx="340" cy="340" r="260" stroke="rgba(212,175,55,0.28)" stroke-width="2" fill="none"/>
+    <!-- decorative glyphs around -->
+    <!-- We'll place small shapes around circle -->
+    <!-- Use many small paths for texture -->
+    <g id="glyphs" transform="translate(340,340)">
+      <!-- generate glyph-like shapes around in script for dynamic rotation -->
+    </g>
+  </g>
+  <!-- subtle inner glow -->
+  <circle cx="340" cy="340" r="170" fill="url(#rg)" opacity="0.4"/>
+</svg>
+
+<!-- fx canvas (dragon + aura + particles) -->
+<canvas id="fxCanvas" width="1920" height="1080" aria-hidden="true"></canvas>
+
+<footer>© 2025 – Tajemná hra</footer>
+
+<script>
+/* -------------------------
+   SETTINGS & SECRET CODE
+   ------------------------- */
+const SECRET_CODE = "259148637"; // změň, pokud potřebuješ
+const MAXLEN = SECRET_CODE.length;
+let cur = "";
+
+/* UI refs */
+const display = document.getElementById('display');
+const err = document.getElementById('err');
+const panel = document.getElementById('panel');
+const enterBtn = document.getElementById('enterBtn');
+const clearBtn = document.getElementById('clearBtn');
+
+/* update display */
+function updateDisplay(){
+  display.textContent = (cur || '').padEnd(MAXLEN, '-');
+  if(!cur) display.textContent = '-'.repeat(MAXLEN);
+}
+updateDisplay();
+
+/* button handlers */
+document.querySelectorAll('.btn').forEach(b=>{
+  b.addEventListener('click', (e)=>{
+    const key = b.dataset.key;
+    if(b.id === 'clearBtn'){ cur = ''; updateDisplay(); playClick(); return; }
+    if(b.id === 'enterBtn' || b.classList.contains('btn--enter')){ attempt(); playClick(true); return; }
+    if(key !== undefined){
+      if(cur.length < MAXLEN) cur += key;
+      updateDisplay();
+      animateBtn(b);
+      playClick();
+      runPulse(0.12);
+    }
+  });
+});
+
+/* keyboard */
+window.addEventListener('keydown', e=>{
+  if(e.key >= '0' && e.key <= '9'){
+    if(cur.length < MAXLEN) cur += e.key;
+    updateDisplay();
+    playClick();
+    runPulse(0.12);
+  }
+  if(e.key === 'Backspace' || e.key === 'Delete'){ cur = ''; updateDisplay(); playClick(); }
+  if(e.key === 'Enter'){ attempt(); playClick(true); }
+});
+
+/* attempt */
+function attempt(){
+  if(cur === SECRET_CODE){
+    err.style.opacity = 0;
+    successSequence();
+  } else {
+    // fail
+    err.textContent = 'Nesprávný kód';
+    err.style.opacity = 1;
+    shake(panel);
+    flashScreen('rgba(255,80,80,0.12)');
+    cur = '';
+    updateDisplay();
+  }
+}
+
+/* small ui animations */
+function animateBtn(btn){
+  btn.style.transform = 'translateY(-6px) scale(1.03)';
+  btn.style.boxShadow = '0 18px 40px rgba(212,175,55,0.08)';
+  setTimeout(()=>{ btn.style.transform=''; btn.style.boxShadow=''; },160);
+}
+function shake(el){
+  el.animate([{transform:'translateX(0)'},{transform:'translateX(-8px)'},{transform:'translateX(8px)'},{transform:'translateX(0)'}],{duration:360,iterations:1});
+}
+function flashScreen(color){
+  const c = canvas, cctx = ctx;
+  cctx.save();
+  cctx.fillStyle = color;
+  cctx.fillRect(0,0,c.width/DPR,c.height/DPR);
+  cctx.restore();
+  // it will be cleared in next frame of drawing loop
+}
+
+/* audio feedback */
+let audioCtx = null;
+function playClick(enter=false){
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.value = enter ? 220 : 520;
+    g.gain.value = 0.0001;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.02, audioCtx.currentTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + (enter?0.28:0.12));
+    o.stop(audioCtx.currentTime + (enter?0.3:0.14));
+  }catch(e){ /* ignore */ }
+}
+
+/* press visual by key */
+function pulseBtnForKey(k){
+  const btn = Array.from(document.querySelectorAll('.btn')).find(x=>x.dataset.key === k);
+  if(btn) animateBtn(btn);
+}
+
+/* success sequence: portal glow + redirect */
+let portalPulse = 0;
+function successSequence(){
+  portalPulse = 1.6;
+  // big sound
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sawtooth'; o.frequency.value = 160;
+    g.gain.value = 0.0001; o.connect(g); g.connect(audioCtx.destination);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.03, audioCtx.currentTime + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 1.0);
+    o.stop(audioCtx.currentTime + 1.0);
+  }catch(e){}
+  // subtle panel pop
+  panel.animate([{transform:'scale(1)'},{transform:'scale(1.02)'},{transform:'scale(1)'}],{duration:900,iterations:1});
+  // after short delay redirect
+  setTimeout(()=>{ window.location.href = 'SKOLA STINU REGISTER.html'; }, 1100);
+}
+
+/* run pulse controlled by input */
+let runPulseLevel = 0;
+function runPulse(amount=0.12){ runPulseLevel = Math.min(1, runPulseLevel + amount); }
+
+/* =========================
+   CANVAS FX: dragon soul, tint, runic ring rotation
+   ========================= */
+const canvas = document.getElementById('fxCanvas');
+const ctx = canvas.getContext('2d', {alpha:true});
+let DPR = Math.max(1, window.devicePixelRatio || 1);
+
+function resize(){
+  DPR = Math.max(1, window.devicePixelRatio || 1);
+  canvas.width = Math.floor(window.innerWidth * DPR);
+  canvas.height = Math.floor(window.innerHeight * DPR);
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* load dragon */
+const dragon = new Image();
+dragon.src = 'dragon.png'; // musí být ve stejné složce
+let dragonReady = false;
+dragon.onload = ()=>{ dragonReady = true; };
+
+/* offscreen tinting */
+const off = document.createElement('canvas');
+const offCtx = off.getContext('2d');
+
+/* particles */
+let particles = [];
+function makeParticles(){
+  particles = [];
+  const target = Math.min(80, Math.max(30, Math.floor(window.innerWidth / 30)));
+  for(let i=0;i<target;i++){
+    particles.push({
+      x: Math.random()*window.innerWidth,
+      y: Math.random()*window.innerHeight,
+      r: Math.random()*2.2 + 0.6,
+      vx: (Math.random()-0.5) * 0.4,
+      vy: 0.2 + Math.random()*0.6,
+      life: Math.random()
+    });
+  }
+}
+makeParticles();
+window.addEventListener('resize', makeParticles);
+
+/* runic glyphs generation (for svg group) */
+(function generateSVGGlyphs(){
+  const g = document.getElementById('glyphs');
+  g.innerHTML = '';
+  const count = 24;
+  for(let i=0;i<count;i++){
+    const angle = (i/count) * Math.PI*2;
+    const x = Math.cos(angle) * 260;
+    const y = Math.sin(angle) * 260;
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x', x);
+    t.setAttribute('y', y);
+    t.setAttribute('transform', `rotate(${angle*180/Math.PI + 90})`);
+    t.setAttribute('font-size','18');
+    t.setAttribute('fill','rgba(212,175,55,0.86)');
+    t.setAttribute('text-anchor','middle');
+    t.style.fontFamily = 'Cinzel, serif';
+    t.textContent = "✦";
+    g.appendChild(t);
+  }
+})();
+
+/* drawing helpers */
+function tintDragonToRedGold(img, size){
+  // draw dragon to offscreen and apply tint using globalCompositeOperation
+  off.width = Math.max(1, Math.round(size));
+  off.height = Math.max(1, Math.round(size));
+  offCtx.clearRect(0,0,off.width,off.height);
+  // draw original
+  offCtx.drawImage(img, 0, 0, off.width, off.height);
+  // create a red-gold gradient overlay
+  offCtx.globalCompositeOperation = 'source-atop';
+  const grad = offCtx.createLinearGradient(0,0,off.width,off.height);
+  grad.addColorStop(0, 'rgba(180,40,35,0.55)');   // deep red
+  grad.addColorStop(0.5, 'rgba(200,110,30,0.35)'); // gold mid
+  grad.addColorStop(1, 'rgba(240,180,40,0.18)');   // light gold
+  offCtx.fillStyle = grad;
+  offCtx.fillRect(0,0,off.width,off.height);
+  offCtx.globalCompositeOperation = 'source-over';
+  return off;
+}
+
+/* animated draw loop */
+let last = performance.now();
+let runicRotation = 0;
+
+function draw(t){
+  const now = t || performance.now();
+  const dt = now - last;
+  last = now;
+
+  // clear
+  ctx.clearRect(0,0,canvas.width/DPR,canvas.height/DPR);
+
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const cx = w/2; const cy = h/2;
+  const baseR = Math.min(w,h) * 0.36;
+
+  // subtle background vignette
+  ctx.save();
+  const vg = ctx.createRadialGradient(cx,cy, baseR*0.3, cx,cy, Math.max(w,h));
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.45)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0,0,w,h);
+  ctx.restore();
+
+  // runic ring (thin) draws behind dragon as subtle thin circle - rotation controlled
+  runicRotation += (0.0008 + runPulseLevel*0.001) * dt;
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(runicRotation);
+  ctx.beginPath();
+  ctx.arc(0,0, baseR*1.02, 0, Math.PI*2);
+  ctx.strokeStyle = `rgba(212,175,55,${0.06 + 0.08*runPulseLevel})`;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // small glowing runes at intervals (procedural)
+  for(let i=0;i<24;i++){
+    const a = (i/24)*Math.PI*2;
+    const x = Math.cos(a) * baseR*1.02;
+    const y = Math.sin(a) * baseR*1.02;
+    const glow = 0.12 + 0.18*Math.sin(now*0.002 + i);
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(255,220,110,${glow})`;
+    ctx.arc(x,y, 6*(0.6+0.4*Math.sin(now*0.001+i)), 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // shafts of light (behind)
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  for(let i=0;i<5;i++){
+    const ang = i * (Math.PI*2/5) + Math.sin(now*0.0006 + i)*0.12;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(cx + Math.cos(ang) * baseR * 1.8, cy + Math.sin(ang) * baseR * 1.8);
+    ctx.strokeStyle = `rgba(255,200,120,${0.015 + 0.015*Math.sin(now*0.002 + i)})`;
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // aura under dragon
+  ctx.save();
+  const aura = ctx.createRadialGradient(cx,cy, baseR*0.02, cx,cy, baseR*1.2);
+  // stronger when portalPulse active
+  const pulse = 1 + 0.9*Math.max(0,portalPulse);
+  aura.addColorStop(0, `rgba(255,220,120,${0.22 * pulse})`);
+  aura.addColorStop(0.3, `rgba(255,180,60,${0.08 * pulse})`);
+  aura.addColorStop(0.9, 'rgba(0,0,0,0)');
+  ctx.fillStyle = aura;
+  ctx.beginPath(); ctx.arc(cx,cy, baseR*1.2, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // draw tinted dragon via offscreen canvas
+  if(dragonReady){
+    const s = baseR;
+    const tinted = tintDragonToRedGold(dragon, s);
+    ctx.save();
+    ctx.translate(cx - s/2, cy - s/2);
+    ctx.globalAlpha = 0.98;
+    ctx.drawImage(tinted, 0, 0, s, s);
+    ctx.restore();
+  }
+
+  // overlay veins and highlights for "soul"
+  drawVeins(ctx, cx, cy, baseR, now);
+
+  // particles
+  for(let p of particles){
+    p.x += p.vx * (dt * 0.06);
+    p.y += p.vy * (dt * 0.06);
+    if(p.x < -20) p.x = w + 20;
+    if(p.x > w + 20) p.x = -20;
+    if(p.y > h + 20){ p.y = -20; p.x = Math.random()*w; }
+    ctx.save();
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(255,210,120,${0.06 + 0.18 * Math.abs(Math.sin((p.x+p.y+now*0.001)*0.002))})`;
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // subtle portal pulse stroke when portalPulse active
+  if(portalPulse > 0){
+    portalPulse = Math.max(0, portalPulse - 0.02);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, baseR*0.95 * (1 + 0.5*portalPulse), 0, Math.PI*2);
+    ctx.strokeStyle = `rgba(255,220,120,${0.22 * portalPulse})`;
+    ctx.lineWidth = 10 * portalPulse;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // decay runPulseLevel slowly
+  runPulseLevel = Math.max(0, runPulseLevel - 0.006);
+
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+/* drawVeins function (decorative "light veins") */
+function drawVeins(ctx, cx, cy, radius, t){
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.globalCompositeOperation = 'lighter';
+  for(let i=0;i<6;i++){
+    const angle = (t*0.0005 + i*(Math.PI*2/6));
+    const x1 = Math.cos(angle) * radius * 0.2;
+    const y1 = Math.sin(angle) * radius * 0.2;
+    const x2 = Math.cos(angle+0.7) * radius * 0.9;
+    const y2 = Math.sin(angle+0.7) * radius * 0.9;
+    const grd = ctx.createLinearGradient(x1,y1,x2,y2);
+    grd.addColorStop(0, 'rgba(255,220,120,0.0)');
+    grd.addColorStop(0.45, 'rgba(255,200,90,0.06)');
+    grd.addColorStop(1, 'rgba(255,160,40,0.12)');
+    ctx.strokeStyle = grd;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(x1,y1);
+    ctx.quadraticCurveTo( (x1+x2)/2 + Math.sin(t*0.002+i)*radius*0.06, (y1+y2)/2 + Math.cos(t*0.001+i)*radius*0.06, x2, y2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* helper: animate svg runic rotation (CSS transform) */
+let svgEl = document.querySelector('.runic-svg');
+let runesGroup = document.getElementById('runes');
+let svgAngle = 0;
+(function svgLoop(now){
+  svgAngle += 0.02 + runPulseLevel*0.5;
+  svgEl.style.transform = `translate(-50%,-50%) rotate(${svgAngle}deg)`;
+  requestAnimationFrame(svgLoop);
+})();
+
+/* clear on page unload */
+window.addEventListener('beforeunload', ()=>{ if(audioCtx) audioCtx.close(); });
+</script>
+
+</body>
+</html>

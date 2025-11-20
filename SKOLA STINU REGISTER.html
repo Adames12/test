@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Škola Stínů – Registrace</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+/* ======================================
+   ZÁKLAD
+====================================== */
+body {
+  margin: 0;
+  background: #000;
+  color: #f5f5f5;
+  font-family: 'Cinzel', serif;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ======================================
+   DRAK (STATICKÝ)
+====================================== */
+#dragonCanvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -4;
+  opacity: 0.22;
+  pointer-events: none;
+  filter: drop-shadow(0 0 55px #d4af37);
+}
+
+/* ======================================
+   PORTÁL
+====================================== */
+#portalCanvas {
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  pointer-events: none;
+  opacity: 0.25;
+}
+
+/* ======================================
+   MAGICKÝ PRACH
+====================================== */
+.motes {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -2;
+}
+.mote {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #d4af37;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 6px #d4af37);
+  animation: floatUp linear infinite;
+}
+@keyframes floatUp {
+  0% { transform: translateY(0); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(-140vh); opacity: 0; }
+}
+
+/* ======================================
+   REGISTRAČNÍ BOX
+====================================== */
+.register-box {
+  background: rgba(0,0,0,0.55);
+  border-radius: 20px;
+  border: 1px solid rgba(212,175,55,0.4);
+  padding: 40px 55px;
+  text-align: center;
+  backdrop-filter: blur(7px);
+  box-shadow: 0 0 35px rgba(212,175,55,0.25);
+  opacity: 0;
+  animation: fadeIn 1.6s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+h1 {
+  font-size: 2.8em;
+  color: #d4af37;
+  text-shadow: 0 0 25px #d4af37;
+}
+
+input {
+  width: 100%;
+  padding: 12px 15px;
+  margin-bottom: 20px;
+  font-size: 1.2em;
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  border: 2px solid #d4af37;
+  border-radius: 12px;
+  outline: none;
+  transition: .3s;
+}
+input:focus {
+  border-color: #ffe27b;
+  box-shadow: 0 0 12px #ffe27b;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  font-size: 1.3em;
+  background: #d4af37;
+  border: none;
+  border-radius: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 0 18px #d4af37;
+  transition: .3s;
+}
+button:hover {
+  background: #ffe27b;
+  box-shadow: 0 0 30px #ffe27b;
+}
+
+#error {
+  margin-top: 10px;
+  color: #ff4444;
+  display: none;
+}
+</style>
+</head>
+
+<body>
+
+<!-- Efekty -->
+<canvas id="dragonCanvas"></canvas>
+<canvas id="portalCanvas"></canvas>
+<div class="motes" id="motes"></div>
+
+<!-- Registrace -->
+<div class="register-box">
+  <h1>Registrace</h1>
+
+  <input id="firstName" placeholder="Jméno">
+  <input id="lastName" placeholder="Příjmení">
+  <input id="email" placeholder="E-mail (dobrovolné)">
+
+  <button id="registerBtn">Pokračovat</button>
+
+  <div id="error">⚠ Vyplň prosím jméno i příjmení</div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+/* ======================================
+   FIREBASE CONFIG
+====================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyAC-8zryVS0RGMavDogJlzZswSvV8o0bFQ",
+  authDomain: "tajemnahra-dd74d.firebaseapp.com",
+  databaseURL: "https://tajemnahra-dd74d-default-rtdb.firebaseio.com/",
+  projectId: "tajemnahra-dd74d",
+  storageBucket: "tajemnahra-dd74d.appspot.com",
+  messagingSenderId: "457576945700",
+  appId: "1:457576945700:web:241fb1803f3a71700760b1"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* ======================================
+   GENERACE ID
+====================================== */
+async function getNextId(){
+  const snap = await db.ref("players").get();
+  const data = snap.val() || {};
+
+  const ids = Object.values(data).map(p => parseInt(p.id)).filter(n => !isNaN(n));
+
+  const max = ids.length ? Math.max(...ids) : 0;
+
+  return String(max + 1).padStart(4, "0");
+}
+
+/* ======================================
+   REGISTRACE HRÁČE
+====================================== */
+document.getElementById("registerBtn").addEventListener("click", async () => {
+  const first = document.getElementById("firstName").value.trim();
+  const last = document.getElementById("lastName").value.trim();
+  const email = document.getElementById("email").value.trim();
+
+  if(!first || !last){
+    document.getElementById("error").style.display = "block";
+    return;
+  }
+
+  document.getElementById("error").style.display = "none";
+
+  const newId = await getNextId();
+
+  const playerData = {
+    id: newId,
+    name: first + " " + last,
+    email: email || ""
+  };
+
+  const ref = db.ref("players").push();
+  await ref.set(playerData);
+
+  localStorage.setItem("userId", newId);
+
+  window.location.href = "welcome.html";
+});
+</script>
+
+<script>
+/* ======================================
+   DRAGON RENDERING
+====================================== */
+const dragon = new Image();
+dragon.src = "dragon.png";
+
+const c = document.getElementById("dragonCanvas");
+const ctx = c.getContext("2d");
+
+function resizeDragon(){
+  c.width = window.innerWidth;
+  c.height = window.innerHeight;
+}
+resizeDragon();
+window.addEventListener("resize", resizeDragon);
+
+function drawDragon(){
+  ctx.clearRect(0,0,c.width,c.height);
+
+  if(dragon.complete){
+    const size = Math.min(c.width, c.height) * 0.75;
+    ctx.save();
+    ctx.translate(c.width/2, c.height/2);
+    ctx.filter = "drop-shadow(0 0 55px #d4af37)";
+    ctx.drawImage(dragon, -size/2, -size/2, size, size);
+    ctx.restore();
+  }
+  requestAnimationFrame(drawDragon);
+}
+drawDragon();
+
+/* ======================================
+   PORTÁL
+====================================== */
+const portal = document.getElementById("portalCanvas");
+const ptx = portal.getContext("2d");
+
+function resizePortal(){
+  portal.width = window.innerWidth;
+  portal.height = window.innerHeight;
+}
+resizePortal();
+window.addEventListener("resize", resizePortal);
+
+let rot = 0;
+
+function drawPortal(){
+  ptx.clearRect(0,0,portal.width,portal.height);
+
+  const radius = Math.min(portal.width, portal.height) * 0.35;
+
+  ptx.save();
+  ptx.translate(portal.width/2, portal.height/2);
+  ptx.rotate(rot);
+
+  ptx.strokeStyle = "rgba(212,175,55,0.85)";
+  ptx.lineWidth = 4;
+  ptx.shadowColor = "#d4af37";
+  ptx.shadowBlur = 22;
+
+  ptx.beginPath();
+  ptx.arc(0,0,radius,0,Math.PI*2);
+  ptx.stroke();
+
+  ptx.restore();
+
+  rot += 0.002;
+
+  requestAnimationFrame(drawPortal);
+}
+drawPortal();
+
+/* ======================================
+   PRACH
+====================================== */
+const motes = document.getElementById("motes");
+for(let i=0;i<60;i++){
+  let m = document.createElement("div");
+  m.className = "mote";
+  m.style.left = Math.random()*100 + "vw";
+  m.style.top = (Math.random()*110 + 20) + "vh";
+  m.style.animationDuration = (6 + Math.random()*8) + "s";
+  motes.appendChild(m);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,126 @@
+:root{
+  --bg:#070707;
+  --panel: rgba(18,18,18,0.72);
+  --gold:#d4af37;
+  --gold-weak:#eac545;
+  --muted:#9b9b9b;
+  --accent:#ffdd66;
+  --danger:#ff6464;
+  --glass: rgba(255,255,255,0.02);
+  --max-width:1100px;
+  --font: "Cinzel", serif;
+}
+
+/* Reset */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--font);
+  background: radial-gradient(1200px 600px at 10% 10%, rgba(212,175,55,0.03), transparent 8%),
+              linear-gradient(180deg,#040404 0%, #0b0b0b 100%);
+  color:#f3f3f3;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  overflow-x:hidden;
+}
+
+/* App container */
+.app {
+  width:100%;
+  max-width:var(--max-width);
+  padding:24px;
+  margin: 0 auto;
+  position:relative;
+  z-index:2;
+}
+
+/* Header / floating menu */
+.header {
+  display:flex;
+  gap:12px;
+  align-items:center;
+  justify-content:space-between;
+  width:100%;
+  margin-bottom:18px;
+}
+.brand {
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.brand .logo {
+  width:48px;height:48px;border-radius:8px;overflow:hidden;
+  box-shadow:0 6px 18px rgba(0,0,0,.6), inset 0 0 10px rgba(212,175,55,0.1);
+  background:linear-gradient(135deg, rgba(212,175,55,0.06), rgba(255,255,255,0.01));
+  display:flex;align-items:center;justify-content:center;
+}
+.brand h1{font-size:1.15rem;color:var(--gold);letter-spacing:.5px}
+.header .controls{display:flex;gap:8px;align-items:center}
+
+.btn{
+  background:#0f0f0f;border:1px solid rgba(255,255,255,0.04);color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer;
+  transition:transform .08s ease, box-shadow .12s;
+}
+.btn:hover{transform:translateY(-2px)}
+.btn.gold{background:var(--gold);color:#000;font-weight:700}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;padding:9px;border-radius:10px}
+
+/* Card */
+.card{
+  background:var(--panel);
+  border-radius:14px;
+  padding:18px;
+  box-shadow:0 10px 40px rgba(0,0,0,0.6);
+  border:1px solid rgba(255,255,255,0.03);
+  margin-bottom:18px;
+}
+
+/* Typography */
+h1,h2{color:var(--gold)}
+h1{font-size:2.4rem;margin-bottom:8px}
+h2{font-size:1.25rem;margin-bottom:8px}
+p.lead{color:var(--muted);font-size:0.98rem;margin-bottom:12px}
+
+/* Table */
+.table-wrap{width:100%;overflow:auto;border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:0.95rem}
+thead th{background:rgba(12,12,12,0.7);padding:12px;text-align:left;color:var(--muted);font-weight:700;border-bottom:1px solid rgba(255,255,255,0.03)}
+tbody td{padding:12px;border-top:1px solid rgba(255,255,255,0.02)}
+.row-actions{display:flex;gap:8px;align-items:center}
+
+/* Inputs */
+.input, input[type="text"], input[type="email"], input[type="password"], textarea {
+  background:#0e0e0e;border:1px solid rgba(255,255,255,0.03);padding:10px;border-radius:8px;color:#fff;width:100%;
+}
+
+/* Small helpers */
+.kv{color:var(--muted);font-size:0.85rem}
+.small{font-size:0.85rem;color:var(--muted)}
+
+/* Toast */
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:rgba(12,12,12,0.9);border-left:4px solid var(--gold);padding:10px 14px;border-radius:10px;z-index:999;
+  box-shadow:0 10px 30px rgba(0,0,0,0.6);
+}
+
+/* Loading screen */
+.loading-overlay{
+  position:fixed;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.6),rgba(0,0,0,0.85));display:flex;align-items:center;justify-content:center;z-index:9999;
+}
+.loading-card{background:linear-gradient(180deg,#0b0b0b, rgba(12,12,12,0.9));padding:22px;border-radius:12px;border:1px solid rgba(255,255,255,0.04);display:flex;gap:18px;align-items:center}
+.loading-spinner{width:54px;height:54px;border-radius:10px;background:linear-gradient(135deg,var(--gold),var(--gold-weak));box-shadow:0 8px 30px rgba(212,175,55,0.12);display:flex;align-items:center;justify-content:center;font-weight:700;color:#000}
+
+/* Form / verify keypad */
+.num-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.num-pad button{padding:12px;border-radius:10px;background:rgba(17,17,17,0.45);border:1px solid rgba(212,175,55,0.18);color:var(--gold);font-weight:700}
+
+/* Responsive */
+@media (max-width:900px){
+  .brand h1{display:none}
+  .header{flex-direction:column;align-items:flex-start;gap:10px}
+  .app{padding:12px}
+}

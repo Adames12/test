@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>ADMIN — Správa hráčů</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#d4af37">
+</head>
+<body>
+
+<div class="app">
+  <h1>ADMIN — SPRÁVA HRÁČŮ</h1>
+  <div class="small" style="margin-bottom:8px">Realtime Database → <code>/players</code></div>
+
+  <div class="card">
+    <div class="toolbar" style="align-items:center;justify-content:space-between">
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="refreshBtn">Načíst</button>
+        <button class="btn gold" id="addBtn">Přidat hráče</button>
+        <button class="btn" id="exportBtn">Export CSV</button>
+      </div>
+      <div id="countInfo" class="small">—</div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:140px;">ID</th>
+            <th>Jméno</th>
+            <th>E-mail</th>
+            <th style="width:210px;">Akce</th>
+          </tr>
+        </thead>
+        <tbody id="playersBody">
+          <tr><td class="empty" colspan="4">Načítám…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer style="color:var(--muted);margin:18px 0">© 2025 – Tajemná hra</footer>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAC-8zryVS0RGMavDogJlzZswSvV8o0bFQ",
+  authDomain: "tajemnahra-dd74d.firebaseapp.com",
+  databaseURL: "https://tajemnahra-dd74d-default-rtdb.firebaseio.com/",
+  projectId: "tajemnahra-dd74d",
+  storageBucket: "tajemnahra-dd74d.appspot.com",
+  messagingSenderId: "457576945700",
+  appId: "1:457576945700:web:241fb1803f3a71700760b1"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const tbody = document.getElementById('playersBody');
+const refreshBtn = document.getElementById('refreshBtn');
+const addBtn = document.getElementById('addBtn');
+const exportBtn = document.getElementById('exportBtn');
+const countInfo = document.getElementById('countInfo');
+
+function renderRows(playersObj){
+  tbody.innerHTML = '';
+  const entries = Object.entries(playersObj || {});
+  if(!entries.length){
+    tbody.innerHTML = `<tr><td class="empty" colspan="4">Žádní hráči</td></tr>`;
+    countInfo.textContent = '0 hráčů';
+    return;
+  }
+  for(const [key,p] of entries){
+    const tr = document.createElement('tr');
+    tr.dataset.key = key;
+    tr.innerHTML = `
+      <td><input readonly value="${p.id||''}" class="input" style="width:120px;text-align:center"></td>
+      <td><input value="${(p.name||'')}" data-field="name" class="input"></td>
+      <td><input value="${(p.email||'')}" data-field="email" class="input"></td>
+      <td class="row-actions">
+        <button class="btn save">Uložit</button>
+        <button class="btn" data-impersonate>Impersonate</button>
+        <button class="btn" style="background:var(--danger);color:#fff" data-delete>Smazat</button>
+      </td>`;
+    tbody.appendChild(tr);
+
+    tr.querySelector('.save').addEventListener('click', async ()=>{
+      const name = tr.querySelector('[data-field="name"]').value.trim();
+      const email = tr.querySelector('[data-field="email"]').value.trim();
+      await db.ref('players').child(tr.dataset.key).update({name,email});
+      AppShared.toast('Uloženo ✔');
+    });
+
+    tr.querySelector('[data-delete]').addEventListener('click', async ()=>{
+      if(!confirm('Opravdu smazat?')) return;
+      await db.ref('players').child(tr.dataset.key).remove();
+      tr.remove();
+      AppShared.toast('Smazáno');
+    });
+
+    tr.querySelector('[data-impersonate]').addEventListener('click', ()=>{
+      const id = tr.querySelector('input[readonly]').value;
+      localStorage.setItem('userId', id);
+      AppShared.toast('Přihlášen jako ' + id);
+      setTimeout(()=> location.href='SKOLA STINU PLAYER.html', 400);
+    });
+  }
+  countInfo.textContent = `${entries.length} hráčů`;
+}
+
+// realtime listener
+db.ref('players').on('value', snap=>{
+  renderRows(snap.val());
+});
+
+addBtn.addEventListener('click', async ()=>{
+  const name = prompt('Jméno nového hráče (Jméno Příjmení):');
+  if(!name) return;
+  const snap = await db.ref('players').get();
+  const obj = snap.val() || {};
+  const ids = Object.values(obj).map(p=>parseInt(p.id||0,10)).filter(n=>!isNaN(n));
+  const maxId = ids.length? Math.max(...ids):0;
+  const newId = String(maxId+1).padStart(4,'0');
+  await db.ref('players').push({id:newId, name, email:''});
+  AppShared.toast('Přidáno ✔');
+});
+
+// export csv
+exportBtn.addEventListener('click', async ()=>{
+  const snap = await db.ref('players').get();
+  const data = snap.val()||{};
+  const rows = [['id','name','email']];
+  Object.values(data).forEach(r=> rows.push([r.id||'', r.name||'', r.email||'']));
+  const csv = rows.map(r=> r.map(c=> `"${(c+'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  const a = document.createElement('a'); a.href=url; a.download='players.csv'; a.click(); URL.revokeObjectURL(url);
+});
+
+refreshBtn.addEventListener('click', async ()=> {
+  AppShared.showLoading('Načítám…');
+  const snap = await db.ref('players').get();
+  renderRows(snap.val());
+  AppShared.hideLoading();
+});
+</script>
+
+<script src="assets/canvas.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

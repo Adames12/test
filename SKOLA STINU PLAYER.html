@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Škola Stínů – Tvá osobní stránka</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#d4af37">
+</head>
+<body>
+
+<div class="app">
+  <h1 id="playerTitle">Načítám tvá data...</h1>
+
+  <section class="card" id="playerInfo" style="max-width:650px;margin-top:20px">
+    <p class="small">Prosím čekej…</p>
+  </section>
+
+  <div style="display:flex;gap:12px;margin-top:12px">
+    <button class="btn" id="editNameBtn">Změnit jméno</button>
+    <button class="btn" id="logoutBtn">Odhlásit</button>
+  </div>
+
+  <footer style="color:var(--muted);margin:18px 0">© 2025 – Tajemná hra</footer>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAC-8zryVS0RGMavDogJlzZswSvV8o0bFQ",
+  authDomain: "tajemnahra-dd74d.firebaseapp.com",
+  databaseURL: "https://tajemnahra-dd74d-default-rtdb.firebaseio.com/",
+  projectId: "tajemnahra-dd74d",
+  storageBucket: "tajemnahra-dd74d.appspot.com",
+  messagingSenderId: "457576945700",
+  appId: "1:457576945700:web:241fb1803f3a71700760b1"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const storedId = localStorage.getItem('userId');
+const titleEl = document.getElementById('playerTitle');
+const infoBox = document.getElementById('playerInfo');
+
+if(!storedId) {
+  location.href = 'SKOLA STINU REGISTER.html';
+} else {
+  (async ()=>{
+    try{
+      AppShared.showLoading('Načítám profil…');
+      const snap = await db.ref('players').orderByChild('id').equalTo(storedId).get();
+      if(!snap.exists()){
+        localStorage.removeItem('userId');
+        location.href = 'SKOLA STINU REGISTER.html';
+        return;
+      }
+      const pl = Object.values(snap.val())[0];
+      titleEl.textContent = "Tvá osobní stránka";
+      infoBox.innerHTML = `
+        <p class="small">Jméno: <strong>${pl.name || 'Neznámý'}</strong></p>
+        <p class="small">Tvůj unikátní kód: <strong>${pl.id}</strong></p>
+        <p class="small">Tvůj vstup do hry byl <span style="color:var(--gold)">úspěšný</span>. Jen ty vidíš tuto stránku.</p>
+      `;
+      AppShared.hideLoading();
+      // nice smoke
+      setTimeout(()=> window.CanvasShared && window.CanvasShared.spawnSmoke(window.innerWidth/2, window.innerHeight/2, 200, 1.8), 300);
+    }catch(err){
+      console.error(err);
+      AppShared.hideLoading();
+      infoBox.innerHTML = `<p class="small" style="color:var(--danger)">Nelze načíst data. Zkus obnovit stránku.</p>`;
+    }
+  })();
+}
+
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  localStorage.removeItem('userId');
+  AppShared.toast('Odhlášeno');
+  setTimeout(()=> location.href='SKOLA STINU REGISTER.html',400);
+});
+
+document.getElementById('editNameBtn').addEventListener('click', async ()=>{
+  const newName = prompt('Zadej nové jméno (Jméno Příjmení):');
+  if(!newName) return;
+  try{
+    // find record and update
+    const snap = await db.ref('players').orderByChild('id').equalTo(localStorage.getItem('userId')).get();
+    if(!snap.exists()) return;
+    const key = Object.keys(snap.val())[0];
+    await db.ref('players').child(key).update({ name: newName });
+    AppShared.toast('Jméno změněno ✔');
+    location.reload();
+  }catch(e){ console.error(e); AppShared.toast('Chyba při změně jména'); }
+});
+</script>
+
+<script src="assets/canvas.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

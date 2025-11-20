@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vítej ve Škole Stínů</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+/* =======================================
+   ZÁKLAD
+======================================= */
+body {
+  margin: 0;
+  background: #000;
+  color: #f5f5f5;
+  font-family: 'Cinzel', serif;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ------------------------------------------------------------------
+   DRAK (statický, ale silně efektový)
+------------------------------------------------------------------ */
+#dragonCanvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -4;
+  opacity: 0.22;
+  pointer-events: none;
+  filter: drop-shadow(0 0 55px #d4af37);
+}
+
+/* ------------------------------------------------------------------
+   PULZUJÍCÍ MAGICKÝ KRUH
+------------------------------------------------------------------ */
+#pulseCanvas {
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+/* ------------------------------------------------------------------
+   MAGICKÝ PRACH
+------------------------------------------------------------------ */
+.motes {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+}
+.mote {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #d4af37;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 6px #d4af37);
+  animation: floatUp linear infinite;
+}
+@keyframes floatUp {
+  0% { transform: translateY(0); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(-140vh); opacity: 0; }
+}
+
+/* ------------------------------------------------------------------
+   RUNOVÁ LIŠTA HORE
+------------------------------------------------------------------ */
+.rune-strip {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  text-align: center;
+  color: rgba(212,175,55,0.35);
+  font-size: 2em;
+  letter-spacing: 12px;
+  animation: runesGlow 3s infinite alternate ease-in-out;
+  z-index: -1;
+  user-select: none;
+}
+@keyframes runesGlow {
+  from { text-shadow: 0 0 6px #d4af37; }
+  to   { text-shadow: 0 0 22px #ffe27b; color: rgba(255,230,140,0.6); }
+}
+
+/* ------------------------------------------------------------------
+   WELCOME BOX
+------------------------------------------------------------------ */
+#welcomeBox {
+  text-align: center;
+  padding: 40px 55px;
+  background: rgba(0,0,0,0.55);
+  border-radius: 20px;
+  border: 1px solid rgba(212,175,55,0.4);
+  box-shadow: 0 0 35px rgba(212,175,55,0.25);
+  backdrop-filter: blur(7px);
+  opacity: 0;
+  animation: fadeIn 1.6s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+h1 {
+  font-size: 2.9em;
+  color: #d4af37;
+  margin-bottom: 10px;
+  text-shadow: 0 0 25px #d4af37;
+}
+
+#welcomeName {
+  color: #ffe27b;
+  font-weight: bold;
+  font-size: 1.4em;
+  text-shadow: 0 0 15px #d4af37;
+}
+
+p {
+  font-size: 1.2em;
+  max-width: 600px;
+  margin: 0 auto 25px;
+  color: #ccc;
+}
+
+button {
+  padding: 15px 40px;
+  border-radius: 12px;
+  border: none;
+  background: #d4af37;
+  font-size: 1.3em;
+  cursor: pointer;
+  font-weight: bold;
+  box-shadow: 0 0 18px #d4af37;
+  transition: 0.3s;
+  margin-top: 10px;
+}
+
+button:hover {
+  background: #ffe27b;
+  box-shadow: 0 0 30px #ffe27b;
+}
+</style>
+</head>
+<body>
+
+<!-- RUNY -->
+<div class="rune-strip">⟁ ᛝ ᛟ ᛉ ✦ ᚱ ᛞ ᚾ ᛇ ᛉ ᛝ ᚨ ✦ ᛃ ᚺ ᛇ ᛉ ᛞ</div>
+
+<!-- MAGICKÝ PRACH -->
+<div class="motes" id="motes"></div>
+
+<!-- DRAK -->
+<canvas id="dragonCanvas"></canvas>
+
+<!-- PULZ -->
+<canvas id="pulseCanvas"></canvas>
+
+<!-- BOX -->
+<div id="welcomeBox">
+  <h1>Vítej ve Škole Stínů</h1>
+  <p>Právě jsi vstoupil do tajného řádu, <span id="welcomeName">hráči</span>.<br>
+     Tvůj příchod byl zaznamenán a cesta temnoty se otevírá.</p>
+
+  <button id="continueBtn">Pokračovat</button>
+</div>
+
+<script>
+/* -------------------- MAGICKÝ PRACH -------------------- */
+const motes = document.getElementById("motes");
+for(let i=0;i<60;i++){
+  let m = document.createElement("div");
+  m.className = "mote";
+  m.style.left = Math.random()*100 + "vw";
+  m.style.top = (Math.random()*120 + 25) + "vh";
+  m.style.animationDuration = (7 + Math.random()*7) + "s";
+  motes.appendChild(m);
+}
+</script>
+
+<script>
+/* -------------------- DRAK -------------------- */
+const dragon = new Image();
+dragon.src = "dragon.png";
+
+const dcan = document.getElementById("dragonCanvas");
+const dctx = dcan.getContext("2d");
+
+function resizeD(){
+  dcan.width = window.innerWidth;
+  dcan.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeD);
+resizeD();
+
+function drawDragon(){
+  dctx.clearRect(0,0,dcan.width,dcan.height);
+
+  if(dragon.complete){
+    const size = Math.min(dcan.width, dcan.height) * 0.75;
+
+    dctx.save();
+    dctx.translate(dcan.width/2, dcan.height/2);
+    dctx.filter = "drop-shadow(0 0 55px #d4af37)";
+    dctx.drawImage(dragon, -size/2, -size/2, size, size);
+    dctx.restore();
+  }
+
+  requestAnimationFrame(drawDragon);
+}
+drawDragon();
+</script>
+
+<script>
+/* -------------------- PULZ -------------------- */
+const pulse = document.getElementById("pulseCanvas");
+const pctx = pulse.getContext("2d");
+
+function resizeP(){
+  pulse.width = window.innerWidth;
+  pulse.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeP);
+resizeP();
+
+let r = 0;
+
+function drawPulse(){
+  pctx.clearRect(0,0,pulse.width,pulse.height);
+
+  const maxR = Math.min(pulse.width, pulse.height) * 0.35;
+
+  pctx.save();
+  pctx.translate(pulse.width/2, pulse.height/2);
+
+  pctx.strokeStyle = "rgba(212,175,55," + (0.18 + Math.sin(r)*0.15) + ")";
+  pctx.lineWidth = 3;
+  pctx.shadowColor = "#d4af37";
+  pctx.shadowBlur = 25;
+
+  pctx.beginPath();
+  pctx.arc(0,0,maxR + Math.sin(r)*18,0,Math.PI*2);
+  pctx.stroke();
+
+  pctx.restore();
+
+  r += 0.035;
+
+  requestAnimationFrame(drawPulse);
+}
+drawPulse();
+</script>
+
+<script>
+/* -------------------- WELCOME DATA -------------------- */
+const fullName = localStorage.getItem("fullName");
+if(fullName){
+  document.getElementById("welcomeName").textContent = fullName;
+}
+
+document.getElementById("continueBtn").addEventListener("click", ()=>{
+  window.location.href = "SKOLA STINU PLAYER.html";
+});
+</script>
+
+</body>
+</html>
